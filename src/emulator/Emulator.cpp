@@ -65,7 +65,7 @@ namespace MicroSim {
 			uint32_t b = current_instruction.operand;
 			uint32_t r = a + b;
 			
-			uint32_t extra_bits = r & ~NUMBER_MASK; // Fetch first 12 bits
+			uint32_t extra_bits = r & ~NUMBER_MASK; // Fetch first 12 bits (i.e. ignore least significant 20 bits)
 			r = r & NUMBER_MASK; // Update r to only be last 20 bits
 
 			uint32_t a_sign = a & SIGN_BIT_MASK;
@@ -87,7 +87,7 @@ namespace MicroSim {
 			uint32_t b = current_instruction.operand;
 			uint32_t r = a + b + ccr.c; // Include carry bit
 
-			uint32_t extra_bits = r & ~NUMBER_MASK; // Fetch first 12 bits
+			uint32_t extra_bits = r & ~NUMBER_MASK; // Fetch first 12 bits (i.e. ignore least significant 20 bits)
 			r = r & NUMBER_MASK; // Update r to only be last 20 bits
 
 			uint32_t a_sign = a & SIGN_BIT_MASK;
@@ -107,13 +107,50 @@ namespace MicroSim {
 
 		case Opcode::OP_SUB: // Subtract
 			// TODO: Not implemented
+			uint32_t a = registers[current_instruction.register_a];
+			uint32_t b = current_instruction.operand;
+			uint32_t r = a - b;
+
+			uint32_t extra_bits = r & ~NUMBER_MASK; // Fetch first 12 bits (i.e. ignore least significant 20 bits)
+			r = r & NUMBER_MASK; // Update r to only be last 20 bits
+
+			uint32_t a_sign = a & SIGN_BIT_MASK;
+			uint32_t b_sign = b & SIGN_BIT_MASK;
+			uint32_t r_sign = r & SIGN_BIT_MASK;
+
+			// Update register
+			registers[current_instruction.register_a] = r;
+
+			// Set flags
+			ccr.c = extra_bits != 0;
+			ccr.z = r == 0;
+			ccr.n = r_sign;
+			ccr.v = (a_sign && !b_sign && !r_sign) || (!a_sign && b_sign && r_sign);
 			break;
 
 		case Opcode::OP_SBC: // Subtract with carry
-			// TODO: Not implemented
+			uint32_t a = registers[current_instruction.register_a];
+			uint32_t b = current_instruction.operand;
+			uint32_t r = a - b - (1 - ccr.c);
+
+			uint32_t extra_bits = r & ~NUMBER_MASK; // Fetch first 12 bits (i.e. ignore least significant 20 bits)
+			r = r & NUMBER_MASK; // Update r to only be last 20 bits
+
+			uint32_t a_sign = a & SIGN_BIT_MASK;
+			uint32_t b_sign = b & SIGN_BIT_MASK;
+			uint32_t r_sign = r & SIGN_BIT_MASK;
+
+			// Update register
+			registers[current_instruction.register_a] = r;
+
+			// Set flags
+			ccr.c = extra_bits != 0;
+			ccr.z = r == 0;
+			ccr.n = r_sign;
+			ccr.v = (a_sign && !b_sign && !r_sign) || (!a_sign && b_sign && r_sign);
 			break;
 
-		case Opcode::OP_LSL: // Logical shift left#
+		case Opcode::OP_LSL: // Logical shift left
 			// TODO: check this is correct!
 			// http://www.riscos.com/support/developers/asm/instrset.html
 			//uint32_t a = registers[current_instruction.register_a];
