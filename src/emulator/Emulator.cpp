@@ -249,7 +249,6 @@ namespace MicroSim {
 			ccr.v = a_sign != r_sign;
 			break;
 		}
-
 		case Opcode::OP_ROL: // Rotate left
 		{
 			uint32_t a = registers[current_instruction.register_a];
@@ -416,10 +415,27 @@ namespace MicroSim {
 			break;
 
 		case Opcode::OP_CMP: // Compare
-			// TODO: Not implemented
+		{
+			// TODO: I don't like the way this is nearly an exact copy of the implementation of SUB
 			// Calculate difference but don't save the result - only set the flags needed
-			break;
+			uint32_t a = registers[current_instruction.register_a];
+			uint32_t b = current_instruction.operand;
+			uint32_t r = a - b;
 
+			uint32_t extra_bits = r & ~NUMBER_MASK; // Fetch first 12 bits (i.e. ignore least significant 20 bits)
+			r = r & NUMBER_MASK; // Update r to only be last 20 bits
+
+			uint32_t a_sign = a & SIGN_BIT_MASK;
+			uint32_t b_sign = b & SIGN_BIT_MASK;
+			uint32_t r_sign = r & SIGN_BIT_MASK;
+
+			// Set flags
+			ccr.c = extra_bits != 0;
+			ccr.z = r == 0;
+			ccr.n = r_sign != 0;
+			ccr.v = (a_sign && !b_sign && !r_sign) || (!a_sign && b_sign && r_sign);
+			break;
+		}
 		default:
 			throw InvalidOpcode(current_instruction.opcode);
 		}
