@@ -75,6 +75,7 @@ namespace MicroSim {
 
 		OP_CMP = 0b11001,
 
+		//OP_ASL = OP_LSL,
 		OP_ASR = 0b11010
 
 	};
@@ -126,7 +127,7 @@ namespace MicroSim {
 		{ OP_JMP, { MODE_DIRECT, MODE_INDIRECT } },
 
 		{ OP_CMP, { MODE_IMMEDIATE, MODE_REGISTER } },
-
+		
 		{ OP_ASR, { MODE_IMMEDIATE, MODE_REGISTER } },
 	};
 

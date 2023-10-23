@@ -107,12 +107,12 @@ CLC ?
 CLV ?
 SEC ?
 
-ASL ?
-
 Note: Ry can be #10 for a decimal 10, #0x10 for a hex 10 (= decimal 16), #0b10 for a binary 10 (= decimal 2)
 Note: By default, constants are signed, but can be changed to unsigned by appending a u: #10u, #0x10u, #0b10u
 Note: mem can be [Ry] to use the value in Ry as a pointer to a memory location, or 10 for memory location 10, or a label
 Note: label is the same as mem
+
+Note: if a shift by zero occurs, the carry flag is not modified
 
 22 instructions minimum, 30 maximum (so far)
 Therefore 5 bits are needed for the opcode.

@@ -106,7 +106,6 @@ namespace MicroSim {
 			break;
 
 		case Opcode::OP_SUB: // Subtract
-			// TODO: Not implemented
 			uint32_t a = registers[current_instruction.register_a];
 			uint32_t b = current_instruction.operand;
 			uint32_t r = a - b;
@@ -151,30 +150,52 @@ namespace MicroSim {
 			break;
 
 		case Opcode::OP_LSL: // Logical shift left
-			// TODO: check this is correct!
-			// http://www.riscos.com/support/developers/asm/instrset.html
-			//uint32_t a = registers[current_instruction.register_a];
-			//uint32_t b = current_instruction.operand;
-			//uint32_t r = a << b;
+			uint32_t a = registers[current_instruction.register_a];
+			uint32_t b = current_instruction.operand;
+			uint32_t r = b < 20 ? a << b : 0; // Handle the case when shifting by more than the size of the integer (20 bits)
 
-			//uint32_t extra_bits = r & ~NUMBER_MASK; // Fetch first 12 bits
-			//r = r & NUMBER_MASK; // Update r to only be last 20 bits
+			uint32_t extra_bits = r & ~NUMBER_MASK; // Fetch first 12 bits
+			r = r & NUMBER_MASK; // Update r to only be last 20 bits
 
-			//uint32_t a_sign = a & SIGN_BIT_MASK;
-			//uint32_t b_sign = b & SIGN_BIT_MASK;
-			//uint32_t r_sign = r & SIGN_BIT_MASK;
+			uint32_t a_sign = a & SIGN_BIT_MASK;
+			uint32_t r_sign = r & SIGN_BIT_MASK;
 
-			//// Update register
-			//registers[current_instruction.register_a] = r;
+			// Update register
+			registers[current_instruction.register_a] = r;
 
-			//ccr.c = extra_bits & 1; // Only use the least significant extra bit
-			//ccr.z = r == 0;
-			//ccr.n = r_sign;
-			//ccr.v = (a_sign && b_sign && !r_sign) || (!a_sign && !b_sign && r_sign);
+			// Set flags
+			// Only set carry if non-zero shift occured
+			if (b != 0) {
+				if (b == 20) ccr.c = a & 1;
+				else         ccr.c = extra_bits & 1; // Only use the least significant extra bit
+			}
+			ccr.z = r == 0;
+			ccr.n = r_sign;
+			ccr.v = a_sign != r_sign;
 			break;
 
 		case Opcode::OP_LSR: // Logical shift right
-			// TODO: Not implemented
+			uint32_t a = registers[current_instruction.register_a] & NUMBER_MASK; // Mask just in case the register contained data in the first 12 bits
+			uint32_t b = current_instruction.operand;
+			uint32_t r = b < 20 ? a >> b : 0; // Handle the case when shifting by more than the size of the integer (20 bits)
+
+			r = r & NUMBER_MASK; // Update r to only be last 20 bits
+
+			uint32_t a_sign = a & SIGN_BIT_MASK;
+			uint32_t r_sign = r & SIGN_BIT_MASK;
+
+			// Update register
+			registers[current_instruction.register_a] = r;
+
+			// Set flags
+			// Only set carry if non-zero shift occured
+			if (b != 0) {
+				if (b <= 20) ccr.c = a & (1 << (b - 1)); // Only use the least significant extra bit
+				else         ccr.c = 0;
+			}
+			ccr.z = r == 0;
+			ccr.n = r_sign;
+			ccr.v = a_sign != r_sign;
 			break;
 
 		case Opcode::OP_ASR: // Arithmetic shift right
