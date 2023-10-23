@@ -38,12 +38,12 @@ namespace MicroSim {
 
 		bool opcode_supports_addressing_mode(Opcode opcode, AddressingMode mode);
 
-		uint32_t memory[MEMORY_SIZE] = { 0 };
-		uint32_t registers[REGISTER_COUNT] = { 0 };
+		uint32_t memory[MEMORY_SIZE] = { }; // Set all memory to zeroes
+		uint32_t registers[REGISTER_COUNT] = { }; // Set all registers to zeroes
 
 		CCR ccr = { 0, 0, 0, 0 };
 
-		Instruction current_instruction;
+		Instruction current_instruction = { Opcode::OP_HLT, AddressingMode::MODE_IMPLICIT, 0, 0, 0 };
 
 		bool _finished = true;
 	};

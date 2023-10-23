@@ -132,5 +132,5 @@ namespace MicroSim {
 	};
 
 	const uint32_t SIGN_BIT_MASK = 1 << 19; // 20th bit is the sign
-	const uint32_t NUMBER_MASK = 0x000fffff // Least significant 20 bits are used for calculations
+	const uint32_t NUMBER_MASK = 0x000fffff; // Least significant 20 bits are used for calculations
 }

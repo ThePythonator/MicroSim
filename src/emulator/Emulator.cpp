@@ -1,6 +1,16 @@
 #include "Emulator.hpp"
 
 namespace MicroSim {
+	Emulator::Emulator() {
+
+	}
+
+	void Emulator::step() {
+		fetch();
+		decode();
+		execute();
+	}
+
 	void Emulator::fetch() {
 		// TODO: fetch
 		// TODO: not sure if this is correct, but it might be?
@@ -41,7 +51,7 @@ namespace MicroSim {
 
 		switch (current_instruction.opcode) {
 		case Opcode::OP_HLT: // Halt
-			// TODO: Not sure what to do here.
+			// TODO: Not sure if anything else should be done here.
 			_finished = true;
 			break;
 
@@ -61,10 +71,11 @@ namespace MicroSim {
 			break;
 
 		case Opcode::OP_ADD: // Add
+		{
 			uint32_t a = registers[current_instruction.register_a];
 			uint32_t b = current_instruction.operand;
 			uint32_t r = a + b;
-			
+
 			uint32_t extra_bits = r & ~NUMBER_MASK; // Fetch first 12 bits (i.e. ignore least significant 20 bits)
 			r = r & NUMBER_MASK; // Update r to only be last 20 bits
 
@@ -78,11 +89,12 @@ namespace MicroSim {
 			// Set flags
 			ccr.c = extra_bits != 0;
 			ccr.z = r == 0;
-			ccr.n = r_sign;
+			ccr.n = r_sign != 0;
 			ccr.v = (a_sign && b_sign && !r_sign) || (!a_sign && !b_sign && r_sign);
 			break;
-
+		}
 		case Opcode::OP_ADC: // Add with carry
+		{
 			uint32_t a = registers[current_instruction.register_a];
 			uint32_t b = current_instruction.operand;
 			uint32_t r = a + b + ccr.c; // Include carry bit
@@ -101,11 +113,12 @@ namespace MicroSim {
 			// Note that both conditions for the carry flag can never be true at once (since the carry can only ever be one bit, so if it overflowed for r, then it won't overflow for new_r)
 			ccr.c = extra_bits != 0;
 			ccr.z = r == 0;
-			ccr.n = r_sign;
+			ccr.n = r_sign != 0;
 			ccr.v = (a_sign && b_sign && !r_sign) || (!a_sign && !b_sign && r_sign);
 			break;
-
+		}
 		case Opcode::OP_SUB: // Subtract
+		{
 			uint32_t a = registers[current_instruction.register_a];
 			uint32_t b = current_instruction.operand;
 			uint32_t r = a - b;
@@ -123,11 +136,12 @@ namespace MicroSim {
 			// Set flags
 			ccr.c = extra_bits != 0;
 			ccr.z = r == 0;
-			ccr.n = r_sign;
+			ccr.n = r_sign != 0;
 			ccr.v = (a_sign && !b_sign && !r_sign) || (!a_sign && b_sign && r_sign);
 			break;
-
+		}
 		case Opcode::OP_SBC: // Subtract with carry
+		{
 			uint32_t a = registers[current_instruction.register_a];
 			uint32_t b = current_instruction.operand;
 			uint32_t r = a - b - (1 - ccr.c);
@@ -145,11 +159,12 @@ namespace MicroSim {
 			// Set flags
 			ccr.c = extra_bits != 0;
 			ccr.z = r == 0;
-			ccr.n = r_sign;
+			ccr.n = r_sign != 0;
 			ccr.v = (a_sign && !b_sign && !r_sign) || (!a_sign && b_sign && r_sign);
 			break;
-
+		}
 		case Opcode::OP_LSL: // Logical shift left
+		{
 			uint32_t a = registers[current_instruction.register_a];
 			uint32_t b = current_instruction.operand;
 			uint32_t r = b < 20 ? a << b : 0; // Handle the case when shifting by more than the size of the integer (20 bits)
@@ -170,11 +185,12 @@ namespace MicroSim {
 				else         ccr.c = extra_bits & 1; // Only use the least significant extra bit
 			}
 			ccr.z = r == 0;
-			ccr.n = r_sign;
+			ccr.n = r_sign != 0;
 			ccr.v = a_sign != r_sign;
 			break;
-
+		}
 		case Opcode::OP_LSR: // Logical shift right
+		{
 			uint32_t a = registers[current_instruction.register_a] & NUMBER_MASK; // Mask just in case the register contained data in the first 12 bits
 			uint32_t b = current_instruction.operand;
 			uint32_t r = b < 20 ? a >> b : 0; // Handle the case when shifting by more than the size of the integer (20 bits)
@@ -190,28 +206,114 @@ namespace MicroSim {
 			// Set flags
 			// Only set carry if non-zero shift occured
 			if (b != 0) {
-				if (b <= 20) ccr.c = a & (1 << (b - 1)); // Only use the least significant extra bit
+				if (b <= 20) ccr.c = a & (1 << (b - 1)); // Find the last bit to get shifted out
 				else         ccr.c = 0;
 			}
 			ccr.z = r == 0;
-			ccr.n = r_sign;
+			ccr.n = r_sign != 0;
 			ccr.v = a_sign != r_sign;
 			break;
-
+		}
 		case Opcode::OP_ASR: // Arithmetic shift right
-			// http://www.riscos.com/support/developers/asm/instrset.html#19933
-			// TODO: Not implemented
+		{
+			uint32_t a = registers[current_instruction.register_a] & NUMBER_MASK; // Mask just in case the register contained data in the first 12 bits
+			uint32_t b = current_instruction.operand;
+			uint32_t r = b < 20 ? a >> b : 0; // Handle the case when shifting by more than the size of the integer (20 bits)
+
+			uint32_t a_sign = a & SIGN_BIT_MASK;
+
+			int result_mask = b < 20 ? NUMBER_MASK >> b : 0;
+			if (a_sign == 0) {
+				r &= result_mask;
+			}
+			else {
+				result_mask = ~result_mask;
+				r |= result_mask;
+			}
+
+			r = r & NUMBER_MASK; // Update r to only be last 20 bits
+
+			uint32_t r_sign = r & SIGN_BIT_MASK;
+
+			// Update register
+			registers[current_instruction.register_a] = r;
+
+			// Set flags
+			// Only set carry if non-zero shift occured
+			if (b != 0) {
+				if (b <= 20) ccr.c = a & (1 << (b - 1)); // Find the last bit to get shifted out
+				else         ccr.c = a_sign != 0;
+			}
+			ccr.z = r == 0;
+			ccr.n = r_sign != 0;
+			ccr.v = a_sign != r_sign;
 			break;
+		}
 
 		case Opcode::OP_ROL: // Rotate left
-			// TODO: Not implemented
-			break;
+		{
+			uint32_t a = registers[current_instruction.register_a];
+			uint32_t old_b = current_instruction.operand;
 
+			uint32_t a_sign = a & SIGN_BIT_MASK;
+
+			if (old_b == 0) {
+				ccr.z = a == 0;
+				ccr.n = a_sign;
+			}
+			else { // old_b != 0
+				uint32_t b = ((old_b - 1) % 20) + 1;
+				uint32_t r = (a << b) | (a >> (20 - b));
+
+				r = r & NUMBER_MASK; // Update r to only be last 20 bits
+
+				uint32_t r_sign = r & SIGN_BIT_MASK;
+
+				// Update register
+				registers[current_instruction.register_a] = r;
+
+				// Set flags
+				ccr.c = a & (1 << (20 - b)); // Find the last bit to get shifted out
+				ccr.z = r == 0;
+				ccr.n = r_sign != 0;
+				ccr.v = a_sign != r_sign;
+			}
+			break;
+		}
 		case Opcode::OP_ROR: // Rotate right
-			// TODO: Not implemented
-			break;
+		{
+			uint32_t a = registers[current_instruction.register_a] & NUMBER_MASK; // Mask just in case the register contained data in the first 12 bits
+			uint32_t old_b = current_instruction.operand;
 
+			uint32_t a_sign = a & SIGN_BIT_MASK;
+
+			if (old_b == 0) {
+				ccr.z = a == 0;
+				ccr.n = a_sign;
+			}
+			else { // old_b != 0
+				uint32_t b = ((old_b - 1) % 20) + 1;
+				uint32_t r = (a << b) | (a >> (20 - b));
+
+				r = r & NUMBER_MASK; // Update r to only be last 20 bits
+
+				uint32_t a_sign = a & SIGN_BIT_MASK;
+				uint32_t r_sign = r & SIGN_BIT_MASK;
+
+				// Update register
+				registers[current_instruction.register_a] = r;
+
+				// Set flags
+				// Only set carry if non-zero shift occured
+				ccr.c = a & (1 << (b - 1)); // Find the last bit to get shifted out
+				ccr.z = r == 0;
+				ccr.n = r_sign != 0;
+				ccr.v = a_sign != r_sign;
+			}
+			break;
+		}
 		case Opcode::OP_AND: // Logical AND
+		{
 			uint32_t a = registers[current_instruction.register_a];
 			uint32_t b = current_instruction.operand;
 			uint32_t r = a & b;
@@ -224,10 +326,11 @@ namespace MicroSim {
 			// Set flags
 			// Note that both conditions for the carry flag can never be true at once (since the carry can only ever be one bit, so if it overflowed for r, then it won't overflow for new_r)
 			ccr.z = r == 0;
-			ccr.n = r_sign;
+			ccr.n = r_sign != 0;
 			break;
-
+		}
 		case Opcode::OP_ORR: // Logical OR
+		{
 			uint32_t a = registers[current_instruction.register_a];
 			uint32_t b = current_instruction.operand;
 			uint32_t r = a | b;
@@ -240,10 +343,11 @@ namespace MicroSim {
 			// Set flags
 			// Note that both conditions for the carry flag can never be true at once (since the carry can only ever be one bit, so if it overflowed for r, then it won't overflow for new_r)
 			ccr.z = r == 0;
-			ccr.n = r_sign;
+			ccr.n = r_sign != 0;
 			break;
-
+		}
 		case Opcode::OP_EOR: // Logical XOR
+		{
 			uint32_t a = registers[current_instruction.register_a];
 			uint32_t b = current_instruction.operand;
 			uint32_t r = a ^ b;
@@ -256,10 +360,11 @@ namespace MicroSim {
 			// Set flags
 			// Note that both conditions for the carry flag can never be true at once (since the carry can only ever be one bit, so if it overflowed for r, then it won't overflow for new_r)
 			ccr.z = r == 0;
-			ccr.n = r_sign;
+			ccr.n = r_sign != 0;
 			break;
-
+		}
 		case Opcode::OP_NOT: // Logical NOT
+		{
 			uint32_t a = registers[current_instruction.register_a];
 			uint32_t r = ~a;
 
@@ -271,32 +376,40 @@ namespace MicroSim {
 			// Set flags
 			// Note that both conditions for the carry flag can never be true at once (since the carry can only ever be one bit, so if it overflowed for r, then it won't overflow for new_r)
 			ccr.z = r == 0;
-			ccr.n = r_sign;
+			ccr.n = r_sign != 0;
+			break;
+		}
+		case Opcode::OP_BCC: // Branch if carry clear (C = 0)
+			if (ccr.c == 0) registers[PC_INDEX] = current_instruction.operand;
 			break;
 
-		case Opcode::OP_BCC: // Branch if carry clear (C = 0)
-			if (ccr.c != 0) break; // Only fall through if C == 0
-
 		case Opcode::OP_BCS: // Branch if carry set (C = 1)
-			if (ccr.c != 1) break; // Only fall through if C == 1
+			if (ccr.c == 1) registers[PC_INDEX] = current_instruction.operand;
+			break;
 
 		case Opcode::OP_BPL: // Branch if plus (N = 0) i.e. positive or zero
-			if (ccr.n != 0) break; // Only fall through if N == 0
+			if (ccr.n == 0) registers[PC_INDEX] = current_instruction.operand;
+			break;
 
 		case Opcode::OP_BMI: // Branch if minus (N = 1) i.e. negative
-			if (ccr.n != 1) break; // Only fall through if N == 1
+			if (ccr.n == 1) registers[PC_INDEX] = current_instruction.operand;
+			break;
 
 		case Opcode::OP_BNE: // Branch if not equal (Z = 0) i.e. not zero
-			if (ccr.z != 0) break; // Only fall through if Z == 0
+			if (ccr.z == 0) registers[PC_INDEX] = current_instruction.operand;
+			break;
 
 		case Opcode::OP_BEQ: // Branch if equal (Z = 1) i.e. zero
-			if (ccr.z != 1) break; // Only fall through if Z == 1
+			if (ccr.z == 1) registers[PC_INDEX] = current_instruction.operand;
+			break;
 
 		case Opcode::OP_BVC: // Branch if overflow clear (V = 0)
-			if (ccr.v != 0) break; // Only fall through if V == 0
+			if (ccr.v == 0) registers[PC_INDEX] = current_instruction.operand;
+			break;
 
 		case Opcode::OP_BVS: // Branch if overflow set (V = 1)
-			if (ccr.v != 1) break; // Only fall through if V == 1
+			if (ccr.v == 1) registers[PC_INDEX] = current_instruction.operand;
+			break;
 
 		case Opcode::OP_JMP: // Jump unconditionally
 			registers[PC_INDEX] = current_instruction.operand;

@@ -1,4 +1,6 @@
-MicroSim: A simple RISC-style processor instruction set, assembly code and processor architechture, partially influenced by the BBC Micro and Motorola 68k instruction sets.
+# MicroSim
+
+_A simple RISC-style processor instruction set, assembly code and processor architechture, partially influenced by the BBC Micro and Motorola 68k instruction sets._
 
 
 
@@ -112,7 +114,7 @@ Note: By default, constants are signed, but can be changed to unsigned by append
 Note: mem can be [Ry] to use the value in Ry as a pointer to a memory location, or 10 for memory location 10, or a label
 Note: label is the same as mem
 
-Note: if a shift by zero occurs, the carry flag is not modified
+Note: if a shift by zero occurs, the carry and overflow flags are not modified (Z and N are still updated)
 
 22 instructions minimum, 30 maximum (so far)
 Therefore 5 bits are needed for the opcode.
