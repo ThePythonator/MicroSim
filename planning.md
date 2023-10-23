@@ -9,7 +9,6 @@ Short and long term goals:
 - Design basic high-level processor layout
 - Create compiler for assembly to binary instructions
 - Create simulator for the processor
-- Make in Minecraft -_-
 
 
 
